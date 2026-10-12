@@ -1,6 +1,12 @@
-# App Platform fragment owned by mars-demo-db (PRE_DEPLOY migrate job).
-# Managed Postgres cluster wiring stays in the parent base spec.
+# App Platform fragment owned by mars-demo-db.
+# Owns managed Postgres (`databases`) and the PRE_DEPLOY migrate job.
 # Composed into mars-demo-app by scripts/compose-app-spec.mjs.
+databases:
+  # Dev managed Postgres attached to the app (customer-like App Platform pattern).
+  - name: db
+    engine: PG
+    version: "16"
+    production: false
 jobs:
   - name: db-migrate
     kind: PRE_DEPLOY
