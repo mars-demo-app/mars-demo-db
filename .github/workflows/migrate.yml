@@ -1,6 +1,8 @@
-# Apply SQL migrations to the App Platform managed Postgres.
-# Requires repo (or org) secret DATABASE_URL — connection string from the
-# App Platform app's `db` database (Settings → mars-demo → db → Connection details).
+# Apply SQL migrations to the App Platform managed Postgres for this app.
+#
+# Secrets live on the GitHub Environment named after the App Platform app id
+# (currently 72bf7269-89cb-4719-ab44-548b972de291), not only at repo level.
+# Required environment secret: DATABASE_URL
 name: migrate
 
 on:
@@ -17,6 +19,8 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    # App Platform app id — Environment holds DATABASE_URL for that app's managed db.
+    environment: 72bf7269-89cb-4719-ab44-548b972de291
     steps:
       - uses: actions/checkout@v4
 
@@ -30,15 +34,15 @@ jobs:
 
       - name: Run migrations
         env:
+          # From Environment secrets (not repo-level).
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # DO managed Postgres presents a chain GitHub runners don't trust.
           # migrate.js strips sslmode=require and uses rejectUnauthorized:false
-          # unless PGSSL=disable (local Make).
+          # for DO managed Postgres (same approach as the API). Do not set
+          # PGSSL=disable here — that is for local Make/Docker only.
         run: |
           if [ -z "${DATABASE_URL}" ]; then
-            echo "::error::Secret DATABASE_URL is not set on this repo/org."
-            echo "Copy the App Platform managed DB connection string into"
-            echo "Settings → Secrets → Actions → DATABASE_URL, then re-run."
+            echo "::error::Secret DATABASE_URL is missing on Environment 72bf7269-89cb-4719-ab44-548b972de291."
+            echo "Settings → Environments → (app id) → Environment secrets → DATABASE_URL"
             exit 1
           fi
           npm run migrate

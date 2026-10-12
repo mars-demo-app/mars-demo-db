@@ -7,11 +7,9 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 | Concern | Detail |
 | --- | --- |
 | Database component | `databases.db` in [`.do/component.yaml`](.do/component.yaml) (merged into parent `.do/app.yaml`) |
-| How schema is applied | GitHub Actions workflow **`migrate`** (`npm run migrate`) using secret `DATABASE_URL` |
+| How schema is applied | GitHub Actions workflow **`migrate`**, using Environment secret `DATABASE_URL` |
 | Local | From parent: `make migrate` (or here with `PGSSL=disable`) |
 | Consumers | [`mars-demo-api`](https://github.com/mars-demo-app/mars-demo-api) reads/writes `orders` |
-
-This repo owns the managed-DB declaration and the DDL. App Platform no longer runs a PRE_DEPLOY migrate job.
 
 ## Layout
 
@@ -43,16 +41,24 @@ npm run migrate
 
 ## App Platform / CI migrate
 
-1. Deploy/update the app so managed `db` exists.
-2. Copy the DB connection string from App Platform → app `mars-demo` → database `db`.
-3. Add repo secret **`DATABASE_URL`** on this repository (Settings → Secrets and variables → Actions).
-4. Run workflow **`migrate`** (Actions → migrate → Run workflow), or push a change under `migrations/`.
+Workflow **`migrate`** targets GitHub Environment named after the App Platform app id:
 
-Required secret:
-
-| Secret | Purpose |
+| Environment name | App |
 | --- | --- |
-| `DATABASE_URL` | Postgres URL for the App Platform managed `db` |
+| `72bf7269-89cb-4719-ab44-548b972de291` | App Platform app `mars-demo` (tor) |
+
+| Secret (on that Environment) | Purpose |
+| --- | --- |
+| **`DATABASE_URL`** | Managed Postgres connection string for that app’s `db` |
+
+```bash
+# Manual run:
+gh workflow run migrate.yml --repo mars-demo-app/mars-demo-db
+```
+
+Also runs on push to `main` when `migrations/**` (or migrate script/deps/workflow) change.
+
+TLS: DO managed PG URLs often include `sslmode=require`. `scripts/migrate.js` strips that and uses `rejectUnauthorized: false` (same idea as the API). Do **not** set `PGSSL=disable` in Actions — that is for local Docker only.
 
 ## App Platform fragment
 
