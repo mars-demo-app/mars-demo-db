@@ -19,7 +19,9 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 migrations/
   001_init.sql
   002_latent_missing_index_note.sql
+  003_add_customer_email_index.sql.optional   # NOT applied on main — fix-demo only
 scripts/migrate.js
+scripts/seed-congestion.js
 ```
 
 ## Local apply
@@ -28,6 +30,7 @@ From the parent checkout (preferred):
 
 ```bash
 make db-up && make migrate
+make seed          # ~80k rows for missing-index congestion demo
 ```
 
 Or in this repo:
@@ -37,7 +40,12 @@ npm ci
 export DATABASE_URL='postgres://mars:mars@127.0.0.1:5432/mars_demo'
 export PGSSL=disable
 npm run migrate
+COUNT=80000 npm run seed
 ```
+
+On the live app, prefer the UI **Seed DB volume** button (or `POST /api/demo/seed-orders`) so you do not need a direct `DATABASE_URL` from your laptop.
+
+**Do not** add `orders_customer_email_idx` on `main`. An optional fix PR on this repo demonstrates the remediation later.
 
 ## App Platform / CI migrate
 
