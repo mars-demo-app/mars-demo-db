@@ -1,0 +1,15 @@
+{
+  "name": "mars-demo-db",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Schema and migrations for the Mars Demo Shop managed Postgres database",
+  "scripts": {
+    "migrate": "node scripts/migrate.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
