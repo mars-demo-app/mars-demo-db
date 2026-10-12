@@ -17,8 +17,12 @@ jobs:
     environment_slug: node-js
     source_dir: /
     instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: npm run migrate
+    # Prefer node directly so PRE_DEPLOY does not depend on npm PATH quirks.
+    run_command: node scripts/migrate.js
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
