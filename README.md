@@ -58,6 +58,24 @@ gh workflow run migrate.yml --repo mars-demo-app/mars-demo-db
 
 Also runs on push to `main` when `migrations/**` (or migrate script/deps/workflow) change.
 
+
+### Connectivity caveat (GitHub Actions → managed DB)
+
+App Platform **dev** databases are typically reachable only from the app’s
+trusted sources, not from public GitHub-hosted runners. A `migrate` run may
+see `DATABASE_URL=set` but then fail with **connection timeout** to
+`*.db.ondigitalocean.com:25060`.
+
+Options if GHA migrate must work from GitHub:
+
+1. Open the DB’s trusted sources to allow GitHub Actions egress (or temporarily `0.0.0.0/0` for a demo), or
+2. Run migrations from a host that can already reach the DB (e.g. one-off from App Platform console / a droplet on the allowlist), or
+3. Keep using schema applied by an earlier in-app migrate (current live app already has tables).
+
+SSL: when the network path works, `migrate.js` handles DO’s `sslmode=require` /
+self-signed chain the same way as the API (strip sslmode, `rejectUnauthorized: false`).
+Do not set `PGSSL=disable` in Actions.
+
 TLS: DO managed PG URLs often include `sslmode=require`. `scripts/migrate.js` strips that and uses `rejectUnauthorized: false` (same idea as the API). Do **not** set `PGSSL=disable` in Actions — that is for local Docker only.
 
 ## App Platform fragment
