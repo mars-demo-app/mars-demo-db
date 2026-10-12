@@ -11,14 +11,53 @@ if (!DATABASE_URL) {
 }
 
 const migrationsDir = path.join(__dirname, "..", "migrations");
+const MAX_ATTEMPTS = Number(process.env.MIGRATE_CONNECT_ATTEMPTS || 30);
+const RETRY_MS = Number(process.env.MIGRATE_CONNECT_RETRY_MS || 2000);
+
+function safeDbHost(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(unparseable DATABASE_URL)";
+  }
+}
+
+function poolConfig() {
+  return {
+    connectionString: DATABASE_URL,
+    // App Platform managed PG needs TLS; local Make sets PGSSL=disable.
+    ssl: process.env.PGSSL === "disable" ? false : { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10_000,
+  };
+}
+
+async function connectWithRetry() {
+  const pool = new Pool(poolConfig());
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const client = await pool.connect();
+      console.log(
+        `connected to ${safeDbHost(DATABASE_URL)} (attempt ${attempt}/${MAX_ATTEMPTS})`
+      );
+      return { pool, client };
+    } catch (err) {
+      lastErr = err;
+      console.error(
+        `connect attempt ${attempt}/${MAX_ATTEMPTS} failed: ${err.message}`
+      );
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, RETRY_MS));
+      }
+    }
+  }
+  await pool.end().catch(() => {});
+  throw lastErr;
+}
 
 async function main() {
-  const pool = new Pool({
-    connectionString: DATABASE_URL,
-    ssl: process.env.PGSSL === "disable" ? false : { rejectUnauthorized: false },
-  });
-
-  const client = await pool.connect();
+  console.log(`mars-demo-db migrate → ${safeDbHost(DATABASE_URL)}`);
+  const { pool, client } = await connectWithRetry();
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -47,7 +86,9 @@ async function main() {
       await client.query("BEGIN");
       try {
         await client.query(sql);
-        await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [file]);
+        await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [
+          file,
+        ]);
         await client.query("COMMIT");
       } catch (err) {
         await client.query("ROLLBACK");
@@ -63,6 +104,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error("migrate failed:", err);
   process.exit(1);
 });
