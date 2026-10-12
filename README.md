@@ -7,39 +7,55 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 | Concern | Detail |
 | --- | --- |
 | Database component | `databases.db` in [`.do/component.yaml`](.do/component.yaml) (merged into parent `.do/app.yaml`) |
-| How schema is applied | App Platform `PRE_DEPLOY` job `db-migrate` (same fragment) runs `npm run migrate` with `${db.DATABASE_URL}` |
+| How schema is applied | GitHub Actions workflow **`migrate`** (`npm run migrate`) using secret `DATABASE_URL` |
+| Local | From parent: `make migrate` (or here with `PGSSL=disable`) |
 | Consumers | [`mars-demo-api`](https://github.com/mars-demo-app/mars-demo-api) reads/writes `orders` |
 
-This repo owns both the managed-DB declaration and the DDL that runs against it. The parent only composes fragments.
+This repo owns the managed-DB declaration and the DDL. App Platform no longer runs a PRE_DEPLOY migrate job.
 
 ## Layout
 
 ```
-.do/component.yaml                  # databases.db + jobs.db-migrate
+.do/component.yaml                  # databases.db only
+.github/workflows/migrate.yml       # apply migrations via Actions
 migrations/
-  001_init.sql                      # orders table + created_at index
-  002_latent_missing_index_note.sql # documents intentional missing email index
-scripts/migrate.js                  # applies *.sql in order, tracks schema_migrations
+  001_init.sql
+  002_latent_missing_index_note.sql
+scripts/migrate.js
 ```
 
 ## Local apply
 
+From the parent checkout (preferred):
+
 ```bash
-npm install
-export DATABASE_URL='postgres://postgres:postgres@127.0.0.1:5432/mars_demo'
+make db-up && make migrate
+```
+
+Or in this repo:
+
+```bash
+npm ci
+export DATABASE_URL='postgres://mars:mars@127.0.0.1:5432/mars_demo'
 export PGSSL=disable
 npm run migrate
 ```
 
-## Managed-DB tie-in story
+## App Platform / CI migrate
 
-1. This repo’s fragment declares `databases: [{ name: db, engine: PG, … }]`.
-2. Parent compose merges that into `.do/app.yaml`; App Platform injects `${db.DATABASE_URL}`.
-3. The `db-migrate` job (this repo) runs before each deploy and applies pending SQL.
-4. The `api` service uses the same `DATABASE_URL` at runtime.
+1. Deploy/update the app so managed `db` exists.
+2. Copy the DB connection string from App Platform → app `mars-demo` → database `db`.
+3. Add repo secret **`DATABASE_URL`** on this repository (Settings → Secrets and variables → Actions).
+4. Run workflow **`migrate`** (Actions → migrate → Run workflow), or push a change under `migrations/`.
+
+Required secret:
+
+| Secret | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres URL for the App Platform managed `db` |
 
 ## App Platform fragment
 
-Owned in [`.do/component.yaml`](.do/component.yaml). Parent [`mars-demo-app`](https://github.com/mars-demo-app/mars-demo-app) tracks this repo as a git submodule and merges fragments into `.do/app.yaml`.
+[`.do/component.yaml`](.do/component.yaml) declares `databases` only. Parent [`mars-demo-app`](https://github.com/mars-demo-app/mars-demo-app) merges fragments into `.do/app.yaml`.
 
-When `.do/**` changes on `main`, workflow `notify-parent-spec` dispatches the parent's `compose-app-spec` workflow (requires secret `PARENT_DISPATCH_TOKEN`).
+When `.do/**` changes, workflow `notify-parent-spec` can dispatch parent compose (optional secret `PARENT_DISPATCH_TOKEN`).

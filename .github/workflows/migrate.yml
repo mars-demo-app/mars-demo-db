@@ -1,0 +1,44 @@
+# Apply SQL migrations to the App Platform managed Postgres.
+# Requires repo (or org) secret DATABASE_URL — connection string from the
+# App Platform app's `db` database (Settings → mars-demo → db → Connection details).
+name: migrate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "migrations/**"
+      - "scripts/migrate.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/migrate.yml"
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # DO managed Postgres presents a chain GitHub runners don't trust.
+          # migrate.js strips sslmode=require and uses rejectUnauthorized:false
+          # unless PGSSL=disable (local Make).
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::Secret DATABASE_URL is not set on this repo/org."
+            echo "Copy the App Platform managed DB connection string into"
+            echo "Settings → Secrets → Actions → DATABASE_URL, then re-run."
+            exit 1
+          fi
+          npm run migrate

@@ -1,40 +1,8 @@
 # App Platform fragment owned by mars-demo-db.
-# Owns managed Postgres (`databases`) and the PRE_DEPLOY migrate job.
+# Owns managed Postgres (`databases`). Schema is applied via GitHub Actions
+# workflow `migrate` (not an App Platform PRE_DEPLOY job).
 databases:
   - name: db
     engine: PG
     version: "16"
     production: false
-jobs:
-  - name: db-migrate
-    kind: PRE_DEPLOY
-    github:
-      repo: mars-demo-app/mars-demo-db
-      branch: main
-      deploy_on_push: true
-    environment_slug: node-js
-    source_dir: /
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    run_command: node scripts/migrate.js
-    envs:
-      - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.DATABASE_URL}
-      - key: db_HOSTNAME
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.HOSTNAME}
-      - key: db_PORT
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.PORT}
-      - key: db_USERNAME
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.USERNAME}
-      - key: db_PASSWORD
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.PASSWORD}
-      - key: db_DATABASE
-        scope: RUN_AND_BUILD_TIME
-        value: ${db.DATABASE}
-      - key: NODE_ENV
-        scope: RUN_AND_BUILD_TIME
-        value: production
