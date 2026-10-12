@@ -6,13 +6,13 @@ const { Pool } = require("pg");
 
 function buildDatabaseUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const host = process.env.db_HOSTNAME || process.env.DB_HOSTNAME || process.env.HOSTNAME;
-  const port = process.env.db_PORT || process.env.DB_PORT || "5432";
-  const user = process.env.db_USERNAME || process.env.DB_USERNAME || process.env.USERNAME;
-  const pass = process.env.db_PASSWORD || process.env.DB_PASSWORD || process.env.PASSWORD;
-  const database = process.env.db_DATABASE || process.env.DB_DATABASE || process.env.DATABASE;
+  const host = process.env.db_HOSTNAME;
+  const port = process.env.db_PORT || "5432";
+  const user = process.env.db_USERNAME;
+  const pass = process.env.db_PASSWORD;
+  const database = process.env.db_DATABASE;
   if (host && user && pass && database) {
-    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}/${database}?sslmode=require`;
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}/${database}`;
   }
   return "";
 }
@@ -30,10 +30,23 @@ function safeDbHost(url) {
   }
 }
 
+/** App Platform / DO managed PG: URL often has sslmode=require; pg v8 treats that as verify-full. */
 function poolConfig(url) {
+  if (process.env.PGSSL === "disable") {
+    return { connectionString: url, ssl: false, connectionTimeoutMillis: 15_000 };
+  }
+  let cleaned = url;
+  try {
+    const u = new URL(url);
+    u.searchParams.delete("sslmode");
+    u.searchParams.delete("uselibpqcompat");
+    cleaned = u.toString();
+  } catch {
+    cleaned = url.replace(/([?&])sslmode=[^&]*/g, "$1").replace(/[?&]$/, "");
+  }
   return {
-    connectionString: url,
-    ssl: process.env.PGSSL === "disable" ? false : { rejectUnauthorized: false },
+    connectionString: cleaned,
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 15_000,
   };
 }
@@ -59,23 +72,15 @@ async function connectWithRetry(url) {
 async function main() {
   console.log("mars-demo-db migrate starting");
   console.log(
-    "env: DATABASE_URL=%s db_HOSTNAME=%s DB_HOSTNAME=%s PGSSL=%s",
+    "env: DATABASE_URL=%s db_HOSTNAME=%s PGSSL=%s",
     process.env.DATABASE_URL ? "set" : "missing",
     process.env.db_HOSTNAME ? "set" : "missing",
-    process.env.DB_HOSTNAME ? "set" : "missing",
     process.env.PGSSL || "(unset)"
   );
-  // Dump bind-related keys (names only) for App Platform debugging.
-  const keys = Object.keys(process.env)
-    .filter((k) => /^(DATABASE|DB_|db_|PG|HOSTNAME|USERNAME|PASSWORD)/i.test(k))
-    .sort();
-  console.log("relevant env keys:", keys.join(", ") || "(none)");
-
   if (!DATABASE_URL) {
     console.error("No DATABASE_URL (or discrete db_* bind vars) available");
     process.exit(1);
   }
-
   console.log(`target host ${safeDbHost(DATABASE_URL)}`);
   const { pool, client } = await connectWithRetry(DATABASE_URL);
   try {
@@ -85,12 +90,10 @@ async function main() {
         applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-
     const files = fs
       .readdirSync(migrationsDir)
       .filter((f) => f.endsWith(".sql"))
       .sort();
-
     for (const file of files) {
       const already = await client.query(
         "SELECT 1 FROM schema_migrations WHERE id = $1",
