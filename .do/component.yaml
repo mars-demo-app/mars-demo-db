@@ -11,7 +11,7 @@ jobs:
   - name: db-migrate
     kind: PRE_DEPLOY
     github:
-      repo: hugocorbucci/mars-demo-db
+      repo: mars-demo-app/mars-demo-db
       branch: main
       deploy_on_push: true
     environment_slug: node-js

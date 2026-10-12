@@ -8,7 +8,7 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 | --- | --- |
 | Database component | `databases.db` in [`.do/component.yaml`](.do/component.yaml) (merged into parent `.do/app.yaml`) |
 | How schema is applied | App Platform `PRE_DEPLOY` job `db-migrate` (same fragment) runs `npm run migrate` with `${db.DATABASE_URL}` |
-| Consumers | [`mars-demo-api`](https://github.com/hugocorbucci/mars-demo-api) reads/writes `orders` |
+| Consumers | [`mars-demo-api`](https://github.com/mars-demo-app/mars-demo-api) reads/writes `orders` |
 
 This repo owns both the managed-DB declaration and the DDL that runs against it. The parent only composes fragments.
 
@@ -40,6 +40,6 @@ npm run migrate
 
 ## App Platform fragment
 
-Owned in [`.do/component.yaml`](.do/component.yaml). Parent [`mars-demo-app`](https://github.com/hugocorbucci/mars-demo-app) tracks this repo as a git submodule and merges fragments into `.do/app.yaml`.
+Owned in [`.do/component.yaml`](.do/component.yaml). Parent [`mars-demo-app`](https://github.com/mars-demo-app/mars-demo-app) tracks this repo as a git submodule and merges fragments into `.do/app.yaml`.
 
 When `.do/**` changes on `main`, workflow `notify-parent-spec` dispatches the parent's `compose-app-spec` workflow (requires secret `PARENT_DISPATCH_TOKEN`).
