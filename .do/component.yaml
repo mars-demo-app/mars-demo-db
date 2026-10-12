@@ -1,0 +1,18 @@
+# App Platform fragment owned by mars-demo-db (PRE_DEPLOY migrate job).
+# Managed Postgres cluster wiring stays in the parent base spec.
+# Composed into mars-demo-app by scripts/compose-app-spec.mjs.
+jobs:
+  - name: db-migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: hugocorbucci/mars-demo-db
+      branch: main
+      deploy_on_push: true
+    environment_slug: node-js
+    source_dir: /
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    run_command: npm run migrate
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}

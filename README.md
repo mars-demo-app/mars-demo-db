@@ -36,3 +36,10 @@ npm run migrate
 2. App Platform injects bindable vars such as `${db.DATABASE_URL}`.
 3. The `db-migrate` job (this repo) runs before each deploy and applies pending SQL.
 4. The `api` service uses the same `DATABASE_URL` at runtime.
+
+## App Platform fragment
+
+This repo owns its App Platform component config in [`.do/component.yaml`](.do/component.yaml).
+The parent [`mars-demo-app`](https://github.com/hugocorbucci/mars-demo-app) tracks this repo as a git submodule and merges fragments into `.do/app.yaml`.
+
+When `.do/**` changes on `main`, workflow `notify-parent-spec` dispatches the parent's `compose-app-spec` workflow (requires secret `PARENT_DISPATCH_TOKEN`).
