@@ -1,8 +1,6 @@
 # App Platform fragment owned by mars-demo-db.
 # Owns managed Postgres (`databases`) and the PRE_DEPLOY migrate job.
-# Composed into mars-demo-app by scripts/compose-app-spec.mjs.
 databases:
-  # Dev managed Postgres attached to the app (customer-like App Platform pattern).
   - name: db
     engine: PG
     version: "16"
@@ -17,12 +15,26 @@ jobs:
     environment_slug: node-js
     source_dir: /
     instance_size_slug: apps-s-1vcpu-0.5gb
-    # Prefer node directly so PRE_DEPLOY does not depend on npm PATH quirks.
     run_command: node scripts/migrate.js
     envs:
       - key: DATABASE_URL
-        scope: RUN_TIME
+        scope: RUN_AND_BUILD_TIME
         value: ${db.DATABASE_URL}
+      - key: db_HOSTNAME
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.HOSTNAME}
+      - key: db_PORT
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.PORT}
+      - key: db_USERNAME
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.USERNAME}
+      - key: db_PASSWORD
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.PASSWORD}
+      - key: db_DATABASE
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE}
       - key: NODE_ENV
-        scope: RUN_TIME
+        scope: RUN_AND_BUILD_TIME
         value: production
