@@ -5,7 +5,7 @@
   "description": "Schema and migrations for the Mars Demo Shop managed Postgres database",
   "scripts": {
     "migrate": "node scripts/migrate.js",
-    "seed": "node scripts/seed-congestion.js"
+    "seed": "node scripts/seed-orders.js"
   },
   "engines": {
     "node": ">=20"

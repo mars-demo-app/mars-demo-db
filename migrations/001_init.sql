@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
 
--- Seed a hot-path email used by the UI "Slow lookup" action.
+-- Seed a sample customer email used by the UI lookup action.
 INSERT INTO orders (customer_email, amount_cents, status)
 SELECT 'hotpath@example.com', 2500, 'created'
 WHERE NOT EXISTS (

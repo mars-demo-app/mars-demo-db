@@ -1,8 +1,7 @@
 "use strict";
 
 /**
- * Seed enough orders that unindexed WHERE customer_email = $1 is visibly slow
- * under concurrent /orders/by-email hammers. Does NOT create the email index.
+ * Insert bulk + hotpath sample orders for local / load prep.
  *
  * Usage:
  *   DATABASE_URL=... PGSSL=disable npm run seed
@@ -78,7 +77,6 @@ async function main() {
     }
     const after = await client.query("SELECT COUNT(*)::bigint AS n FROM orders");
     console.log(`orders after: ${after.rows[0].n} (${Date.now() - started}ms)`);
-    console.log("reminder: customer_email remains unindexed on main");
   } finally {
     client.release();
     await pool.end();
