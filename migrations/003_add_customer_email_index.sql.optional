@@ -1,7 +1,0 @@
--- Optional follow-up migration (not applied on main).
--- Rename to 003_add_customer_email_index.sql on a branch when you want this index.
---
--- CREATE INDEX CONCURRENTLY cannot run inside a transaction; the migrate.js
--- runner wraps each file in BEGIN/COMMIT, so use a plain CREATE INDEX here.
-
-CREATE INDEX IF NOT EXISTS orders_customer_email_idx ON orders (customer_email);

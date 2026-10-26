@@ -19,7 +19,6 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 migrations/
   001_init.sql
   002_noop.sql
-  003_add_customer_email_index.sql.optional   # NOT applied on main
 scripts/migrate.js
 scripts/seed-orders.js
 ```
