@@ -18,10 +18,9 @@ Relational schema, migrations, and the **App Platform database fragment** for th
 .github/workflows/migrate.yml       # apply migrations via Actions
 migrations/
   001_init.sql
-  002_latent_missing_index_note.sql
-  003_add_customer_email_index.sql.optional   # NOT applied on main — fix-demo only
+  002_noop.sql
 scripts/migrate.js
-scripts/seed-congestion.js
+scripts/seed-orders.js
 ```
 
 ## Local apply
@@ -30,7 +29,7 @@ From the parent checkout (preferred):
 
 ```bash
 make db-up && make migrate
-make seed          # ~80k rows for missing-index congestion demo
+make seed          # ~80k sample rows
 ```
 
 Or in this repo:
@@ -43,9 +42,7 @@ npm run migrate
 COUNT=80000 npm run seed
 ```
 
-On the live app, prefer the UI **Seed DB volume** button (or `POST /api/demo/seed-orders`) so you do not need a direct `DATABASE_URL` from your laptop.
-
-**Do not** add `orders_customer_email_idx` on `main`. An optional fix PR on this repo demonstrates the remediation later.
+On the live app, prefer the UI **Load sample orders** button (or `POST /api/demo/seed-orders`) so you do not need a direct `DATABASE_URL` from your laptop.
 
 ## App Platform / CI migrate
 
@@ -59,35 +56,13 @@ Workflow **`migrate`** targets GitHub Environment named after the App Platform a
 | --- | --- |
 | **`DATABASE_URL`** | Managed Postgres connection string for that app’s `db` |
 
+Set the secret once from the App Platform DB connection string (doctl / console). Then:
+
 ```bash
-# Manual run:
-gh workflow run migrate.yml --repo mars-demo-app/mars-demo-db
+gh workflow run migrate --repo mars-demo-app/mars-demo-db
 ```
 
-Also runs on push to `main` when `migrations/**` (or migrate script/deps/workflow) change.
+## Notes
 
-
-### Connectivity caveat (GitHub Actions → managed DB)
-
-App Platform **dev** databases are typically reachable only from the app’s
-trusted sources, not from public GitHub-hosted runners. A `migrate` run may
-see `DATABASE_URL=set` but then fail with **connection timeout** to
-`*.db.ondigitalocean.com:25060`.
-
-Options if GHA migrate must work from GitHub:
-
-1. Open the DB’s trusted sources to allow GitHub Actions egress (or temporarily `0.0.0.0/0` for a demo), or
-2. Run migrations from a host that can already reach the DB (e.g. one-off from App Platform console / a droplet on the allowlist), or
-3. Keep using schema applied by an earlier in-app migrate (current live app already has tables).
-
-SSL: when the network path works, `migrate.js` handles DO’s `sslmode=require` /
-self-signed chain the same way as the API (strip sslmode, `rejectUnauthorized: false`).
-Do not set `PGSSL=disable` in Actions.
-
-TLS: DO managed PG URLs often include `sslmode=require`. `scripts/migrate.js` strips that and uses `rejectUnauthorized: false` (same idea as the API). Do **not** set `PGSSL=disable` in Actions — that is for local Docker only.
-
-## App Platform fragment
-
-[`.do/component.yaml`](.do/component.yaml) declares `databases` only. Parent [`mars-demo-app`](https://github.com/mars-demo-app/mars-demo-app) merges fragments into `.do/app.yaml`.
-
-When `.do/**` changes, workflow `notify-parent-spec` can dispatch parent compose (optional secret `PARENT_DISPATCH_TOKEN`).
+- Migrations are plain SQL files applied in lexicographic order by `scripts/migrate.js`.
+- Optional index migration stays off `main` until you deliberately enable it on a branch.
